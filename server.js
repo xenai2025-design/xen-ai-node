@@ -4,17 +4,23 @@ import dotenv from 'dotenv';
 import session from 'express-session';
 import { testConnection, initializeDatabase } from './config/database.js';
 import authRoutes from './routes/auth.js';
+import chatRoutes from './routes/chat.js';
+import configRoutes from './routes/config.js';
 import passport from './config/passport.js';
+import configService from './services/configService.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5174'
+  ],
   credentials: true
 }));
 
@@ -54,6 +60,8 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/config', configRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -84,6 +92,9 @@ const startServer = async () => {
     // Initialize database tables
     await initializeDatabase();
     
+    // Initialize default configurations
+    await configService.initializeDefaultConfigs();
+    
     // Start server
     app.listen(PORT, () => {
       console.log('🚀 Server started successfully!');
@@ -91,6 +102,8 @@ const startServer = async () => {
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+      console.log(`💬 Chat API: http://localhost:${PORT}/api/chat`);
+      console.log(`⚙️  Config API: http://localhost:${PORT}/api/config`);
       console.log('─'.repeat(50));
     });
     
