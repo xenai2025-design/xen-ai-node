@@ -1,99 +1,12 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import session from 'express-session';
-import { testConnection, initializeDatabase } from './config/database.js';
-import authRoutes from './routes/auth.js';
-import chatRoutes from './routes/chat.js';
-import configRoutes from './routes/config.js';
-import passport from './config/passport.js';
-import configService from './services/configService.js';
+import { createApp } from './app.js';
 
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:5174'
-  ],
-  credentials: true
-}));
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Session middleware for OAuth
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'xen-ai-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Xen-AI Backend Server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/config', configRoutes);
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'API endpoint not found',
-    path: req.originalUrl
-  });
-});
-
-// Global error handler
-app.use((error, req, res, next) => {
-  console.error('Global error handler:', error);
-  
-  res.status(error.status || 500).json({
-    success: false,
-    message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-  });
-});
+const PORT = process.env.PORT || 5000;
 
 // Initialize database and start server
 const startServer = async () => {
   try {
-    // Test database connection
-    await testConnection();
-    
-    // Initialize database tables
-    await initializeDatabase();
-    
-    // Initialize default configurations
-    await configService.initializeDefaultConfigs();
+    // Create the Express app
+    const app = await createApp();
     
     // Start server
     app.listen(PORT, () => {
@@ -124,5 +37,5 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Start the server
+// Start the server for local development
 startServer();
